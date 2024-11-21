@@ -88,11 +88,10 @@ export async function verifyVimeo(data: VideoPlatformCredentails) {
   }
 }
 
-export async function POST(request: Request) {
+export default async function POST(request: Request) {
   const data = await request.json();
 
   switch (data.additionalMetadata?.platformId) {
-    
     case 'api-video': {
       const result = await verifyApiVideo(data);
       return result;
@@ -117,7 +116,7 @@ export async function POST(request: Request) {
         return Response.json({ error: 'Invalid credentials' }, { status: 401 });
       }
 
-      case 's3':
+    case 's3':
       const client = new S3Client({
         credentials: {
           accessKeyId: data.publicKey,
@@ -153,9 +152,9 @@ export async function POST(request: Request) {
       }
 
     case "vimeo":
-        const response = await verifyVimeo(data);
-        return  response;
-  
+      const response = await verifyVimeo(data);
+      return response;
+
     case "fastPix":
       const result = await verifyFastPix(data);
       return result;
