@@ -1,10 +1,11 @@
-import { S3Client, ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { NextRequest, NextResponse } from 'next/server';
+import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 interface MetaData {
     environment: string;
     platformId: string;
     bucket?: string;
-    region?: string
+    region?: string;
 }
 
 interface LogoImage {
@@ -35,7 +36,6 @@ interface PlatformCredentials {
     config?: VideoConfig;
 }
 
-// Fetch videos from S3 bucket
 const fetchS3Media = async (sourcePlatform: PlatformCredentials) => {
     const { publicKey, secretKey, additionalMetadata } = sourcePlatform.credentials;
     const { bucket, region } = additionalMetadata;
@@ -60,10 +60,9 @@ const fetchS3Media = async (sourcePlatform: PlatformCredentials) => {
 
             const response = await s3.send(command);
 
-            const filteredVideos = response.Contents?.filter(file => file.Key?.endsWith(".mp4")) || [];
+            const filteredVideos = response.Contents?.filter(file => file.Key?.endsWith('.mp4')) || [];
             videos = [...videos, ...filteredVideos];
-            continuationToken = response?.NextContinuationToken ?? "";
-
+            continuationToken = response?.NextContinuationToken ?? '';
         } while (continuationToken);
 
         return {
@@ -71,25 +70,22 @@ const fetchS3Media = async (sourcePlatform: PlatformCredentials) => {
             response: videos.map(video => ({
                 key: video.Key,
                 url: `https://${bucket}.s3.amazonaws.com/${video.Key}`,
-            }))
+            })),
         };
-
     } catch (error) {
-
-        return { success: false, message: error?.message ?? "Failed to fetch video from API Video" };
+        return { success: false, message: error?.message ?? 'Failed to fetch video from API Video' };
     }
 };
 
-// Create media asset using source file in Fastpix
 const createMedia = async (
     destinationPlatform: PlatformCredentials,
     mp4Url: string,
     fileKey: string
 ) => {
     const credentials = destinationPlatform?.credentials;
-    const url = "https://v1.fastpix.io/on-demand";
+    const url = 'https://v1.fastpix.io/on-demand';
 
-    const playbackPolicy = destinationPlatform?.config?.playbackPolicy?.length  === 1 ? "public" : "private";
+    const playbackPolicy = destinationPlatform?.config?.playbackPolicy?.length === 1 ? 'public' : 'private';
     const testmode = destinationPlatform?.config?.testMode ? destinationPlatform.config.testMode : null;
 
     const requestBody = {
@@ -99,23 +95,23 @@ const createMedia = async (
         accessPolicy: playbackPolicy,
         inputs: [
             {
-                type: "video",
+                type: 'video',
                 url: mp4Url,
-                ...(testmode === "1" ? { startTime: 0, endTime: 10 } : {})
+                ...(testmode === '1' ? { startTime: 0, endTime: 10 } : {}),
             },
         ],
-        mp4Support: "capped_4k",
+        mp4Support: 'capped_4k',
     };
 
     try {
         const response = await fetch(url, {
-            method: "POST",
+            method: 'POST',
             headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
                 Authorization: `Basic ${Buffer.from(
                     `${credentials.publicKey}:${credentials.secretKey}`
-                ).toString("base64")}`,
+                ).toString('base64')}`,
             },
             body: JSON.stringify(requestBody),
         });
@@ -124,22 +120,19 @@ const createMedia = async (
             const res = await response.json();
 
             return {
-                sucess: true,
-                response: res
-            }
-           
+                success: true,
+                response: res,
+            };
         } else {
-            return { success: false, message: "Failed to create media on fastpix" };
+            return { success: false, message: 'Failed to create media on fastpix' };
         }
-
     } catch (error) {
-
-        return { success: false, message: error?.message ?? "Failed to create media on fastpix" };
+        return { success: false, message: error?.message ?? 'Failed to create media on fastpix' };
     }
 };
 
-// POST API Endpoint
-export default async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+    try {
         const data = await request.json();
         const sourcePlatform = data?.sourcePlatform as PlatformCredentials;
         const destinationPlatform = data?.destinationPlatform as PlatformCredentials;
@@ -147,10 +140,13 @@ export default async function POST(request: Request) {
         const response = await fetchS3Media(sourcePlatform);
 
         if (!response.success) {
-
-            return new Response(JSON.stringify({ message: response.message ?? "No videos found in S3 bucket" }), { status: 404 });
+            return NextResponse.json(
+                { message: response.message ?? 'No videos found in S3 bucket' },
+                { status: 404 }
+            );
         }
-        const videos = response?.response ?? []
+
+        const videos = response?.response ?? [];
         const createdMedia = [];
 
         for (const video of videos) {
@@ -162,16 +158,20 @@ export default async function POST(request: Request) {
         }
 
         if (createdMedia.length > 0) {
-
-            return new Response(
-                JSON.stringify({ success: true, createdMedia }),
-                { status: 200, headers: { "Content-Type": "application/json" } }
+            return NextResponse.json(
+                { success: true, createdMedia },
+                { status: 200 }
             );
         } else {
-
-            return new Response(
-                JSON.stringify({ message: "No media could be created" }),
+            return NextResponse.json(
+                { message: 'No media could be created' },
                 { status: 400 }
             );
         }
+    } catch (error: any) {
+        return NextResponse.json(
+            { message: error.message ?? 'An unexpected error occurred' },
+            { status: 500 }
+        );
+    }
 }
