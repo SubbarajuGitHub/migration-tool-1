@@ -74,7 +74,6 @@ const getMedia = async (sourcePlatform: PlatformCredentials, videoId: string) =>
         } else {
             return { success: false, message: "Failed to get media by ID from Mux" };
         }
-
     } catch (error) {
         return { success: false, message: "Failed to get media by ID from Mux" };
     }
@@ -191,7 +190,7 @@ const createMasterAccess = async (sourcePlatform: PlatformCredentials, videoId: 
 }
 
 // Migration API to handle Mux to Fastpix
-export default async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     const data = await request.json();
     const sourcePlatform = data?.sourcePlatform ?? null;
     const destinationPlatform = data?.destinationPlatform ?? null;
@@ -199,7 +198,7 @@ export default async function POST(request: Request) {
     const result = await fetchMuxMedia(sourcePlatform);
 
     if (!result.success) {
-        return new Response(
+        return new NextResponse(
             JSON.stringify({ success: false, error: 'Failed to fetch media from Mux' }),
             { status: 400 }
         );
@@ -243,7 +242,7 @@ export default async function POST(request: Request) {
     }
 
     if (createdMedia.length > 0 || muxVideosStatusPreparing.length >= 1) {
-        return new Response(
+        return new NextResponse(
             JSON.stringify({
                 success: true,
                 createdMedia,
@@ -252,7 +251,7 @@ export default async function POST(request: Request) {
             { status: 200, headers: { 'Content-Type': 'application/json' } }
         );
     } else {
-        return new Response(
+        return new NextResponse(
             JSON.stringify({ success: true, message: 'No media were created' }),
             { status: 404 }
         );
