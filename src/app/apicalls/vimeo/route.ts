@@ -117,7 +117,7 @@ const createMedia = async (
     }
 };
 
-export async function POST(request: Request) {
+export default async function POST(request: Request) {
     try {
         const data = await request.json();
         const sourcePlatform = data?.sourcePlatform;
