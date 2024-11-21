@@ -139,7 +139,7 @@ const createMedia = async (
 };
 
 // POST API Endpoint
-export async function POST(request: Request) {
+export default async function POST(request: Request) {
         const data = await request.json();
         const sourcePlatform = data?.sourcePlatform as PlatformCredentials;
         const destinationPlatform = data?.destinationPlatform as PlatformCredentials;
