@@ -1,3 +1,5 @@
+import { NextRequest, NextResponse } from "next/server";
+
 interface MetaData {
     environment: string;
     platformId: string;
@@ -112,21 +114,21 @@ const createMediaInFastpix = async (
 };
 
 // API Video Migration Endpoint
-export default async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     try {
         const { sourcePlatform, destinationPlatform } = await request.json();
 
         if (!sourcePlatform || !destinationPlatform) {
-            return new Response(
-                JSON.stringify({ error: "Invalid request. Missing platform credentials." }),
+            return NextResponse.json(
+                { error: "Invalid request. Missing platform credentials." },
                 { status: 400 }
             );
         }
 
         const fetchResult = await fetchApiVideoMedia(sourcePlatform);
         if (!fetchResult.success) {
-            return new Response(
-                JSON.stringify({ error: fetchResult.message }),
+            return NextResponse.json(
+                { error: fetchResult.message },
                 { status: 400 }
             );
         }
@@ -150,22 +152,19 @@ export default async function POST(request: Request) {
         }
 
         if (createdMedia.length > 0) {
-            return new Response(
-                JSON.stringify({ success: true, createdMedia, failedMedia }),
-                {
-                    status: 200,
-                    headers: { "Content-Type": "application/json" },
-                }
+            return NextResponse.json(
+                { success: true, createdMedia, failedMedia },
+                { status: 200 }
             );
         } else {
-            return new Response(
-                JSON.stringify({ error: "No media were created" }),
+            return NextResponse.json(
+                { error: "No media were created" },
                 { status: 400 }
             );
         }
     } catch (error: any) {
-        return new Response(
-            JSON.stringify({ error: error.message ?? "An unexpected error occurred" }),
+        return NextResponse.json(
+            { error: error.message ?? "An unexpected error occurred" },
             { status: 500 }
         );
     }
