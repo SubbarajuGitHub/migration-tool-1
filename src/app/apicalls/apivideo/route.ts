@@ -121,7 +121,7 @@ const createMedia = async (destinationPlatform: PlatformCredentials, mp4_support
 };
 
 // API Video migration endpoint
-export async function POST(request: Request) {
+export default async function POST(request: Request) {
     const data = await request.json();
     const sourcePlatform = data?.sourcePlatform ? data.sourcePlatform : null;
     const destinationPlatform = data?.destinationPlatform ? data?.destinationPlatform : null;
