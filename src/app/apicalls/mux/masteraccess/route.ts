@@ -1,3 +1,5 @@
+import { NextResponse } from "next/server"; // Import NextResponse for API responses
+
 interface MetaData {
     environment: string;
     platformId: string;
@@ -87,7 +89,7 @@ const createMedia = async (
     }
 };
 
-export default async function POST(request: Request) {
+export async function POST(request: Request) {
     const { videoIds, sourcePlatform, destinationPlatform } = await request.json();
     const credentials = sourcePlatform?.credentials || null;
 
@@ -131,22 +133,20 @@ export default async function POST(request: Request) {
                     }
                 }
             } else {
-                return new Response(
-                    JSON.stringify({
-                        message: `Error fetching media data for video ID ${videoId}`,
-                    }),
+                return NextResponse.json(
+                    { message: `Error fetching media data for video ID ${videoId}` },
                     { status: 400 }
                 );
             }
         }
 
-        return new Response(
-            JSON.stringify({ success: true, createdMedia }),
+        return NextResponse.json(
+            { success: true, createdMedia },
             { status: 200 }
         );
     } catch (error) {
-        return new Response(
-            JSON.stringify({ message: "Error during media processing" }),
+        return NextResponse.json(
+            { message: "Error during media processing" },
             { status: 500 }
         );
     }
