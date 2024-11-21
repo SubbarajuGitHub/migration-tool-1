@@ -1,3 +1,5 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 interface MetaData {
     environment: string,
     platformId: string
@@ -230,65 +232,67 @@ const createMasterAccess = async (sourcePlatform: PlatformCredentials, VideoId: 
 export default async function POST(request: Request) {
     const data = await request.json();
     const sourcePlatform = data?.sourcePlatform ? data.sourcePlatform : null;
-    const destinationPlatform = data?.destinationPlatform ? data?.destinationPlatform : null;
+    const destinationPlatform = data?.destinationPlatform ? data.destinationPlatform : null;
 
     const result = await fetchMuxMedia(sourcePlatform);
 
     if (!result.success) {
-        return new Response(JSON.stringify({ success: false, error: 'Failed to fetch media from Mux' }), { status: 400 });
+        return new Response(
+            JSON.stringify({ success: false, error: 'Failed to fetch media from Mux' }),
+            { status: 400 }
+        );
     }
-   
+
     const videos = result?.response ?? []; // all media of mux
-    const createdMedia = [];
+    const createdMedia: any[] = [];
+    const muxVideosStatusPreparing: string[] = [];
 
     for (const video of videos) {
         if (video.mp4_support !== "none") {
             const playbackId = video?.playback_ids?.[0]?.id;
             const mp4_support = video?.mp4_support;
             const videoId = video?.id;
-            const passthrough = video?.passthrough ? video.passthrough : null;
-           
-            const createdMediaItem = await createMedia(destinationPlatform, playbackId, mp4_support, videoId);
-            if (createdMediaItem) {
-                createdMedia.push(createdMediaItem?.response);
-            }
 
+            const createdMediaItem = await createMedia(destinationPlatform, playbackId, mp4_support, videoId);
+            if (createdMediaItem?.success) {
+                createdMedia.push(createdMediaItem.response);
+            }
         } else {
             const videoId = video?.id;
             const createdMasterAccess = await createMasterAccess(sourcePlatform, videoId);
 
-            if (createdMasterAccess) {
-                const videoId = createdMasterAccess?.response?.data?.id ? createdMasterAccess.response.data.id : null;
-                const getMediaById = await getMedia(sourcePlatform, videoId);
+            if (createdMasterAccess?.success) {
+                const mediaId = createdMasterAccess?.response?.data?.id;
+                const getMediaById = await getMedia(sourcePlatform, mediaId);
 
-                if (getMediaById?.response?.data?.master?.status === "ready") {
-                    const source_url = getMediaById?.response?.data?.master?.url;
+                if (getMediaById?.success && getMediaById?.response?.data?.master?.status === "ready") {
+                    const sourceUrl = getMediaById?.response?.data?.master?.url;
                     const playbackId = video?.playback_ids?.[0]?.id;
                     const mp4_support = video?.mp4_support;
-                    const videoId = video?.id;
-                    const passthrough = video?.passthrough ? video.passthrough : null;
-                    const createdMediaItem = await createMedia(destinationPlatform, playbackId, mp4_support, videoId, source_url);
-                    if (createdMediaItem) {
-                        createdMedia.push(createdMediaItem?.response);
+                    const createdMediaItem = await createMedia(destinationPlatform, playbackId, mp4_support, videoId, sourceUrl);
+                    if (createdMediaItem?.success) {
+                        createdMedia.push(createdMediaItem.response);
                     }
                 } else {
-
-                    muxVideosStatusPreparing.push(createdMasterAccess?.response?.data?.id);
+                    muxVideosStatusPreparing.push(mediaId);
                 }
             }
         }
     }
 
     if (createdMedia.length > 0 || muxVideosStatusPreparing.length >= 1) {
-
-        return new Response(JSON.stringify({ success: true, createdMedia, mediaWithPreparingStatus: muxVideosStatusPreparing }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        });
+        return new Response(
+            JSON.stringify({
+                success: true,
+                createdMedia,
+                mediaWithPreparingStatus: muxVideosStatusPreparing
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
     } else {
-
-        return new Response(JSON.stringify({ success: true, message: 'No media were created' }), { status: 404 });
+        return new Response(
+            JSON.stringify({ success: true, message: 'No media were created' }),
+            { status: 404 }
+        );
     }
-
-
 }
