@@ -84,7 +84,7 @@ const createMedia = async (destinationPlatform: PlatformCredentials, playbackId:
     }
 };
 
-export async function POST(request: Request) {
+export default async function POST(request: Request) {
     const { videoIds, sourcePlatform, destinationPlatform } = await request.json();
     const credentials = sourcePlatform?.credentials ? sourcePlatform.credentials : null;
 
