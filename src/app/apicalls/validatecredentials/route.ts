@@ -18,7 +18,7 @@ interface VideoPlatformCredentails {
 async function verifyApiVideo(data: VideoPlatformCredentails) {
   const endpoint = data.additionalMetadata?.environment === 'sandbox'
     ? "https://sandbox.api.video"
-    : "https://api.api.video";
+    : "https://ws.api.video";
 
   try {
     const response = await fetch(`${endpoint}/videos`, {
