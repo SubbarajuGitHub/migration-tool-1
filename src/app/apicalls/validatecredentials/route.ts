@@ -106,8 +106,18 @@ export async function POST(request: Request) {
           },
         });
 
+        const valiadteAccountid = await fetch(`https://api.cloudflare.com/client/v4/accounts/${data?.publicKey}/stream`, {
+          method: 'GET',
+          headers: {
+              'Authorization': `Bearer ${data?.secretKey ? data.secretKey : null}`,
+              'Content-Type': 'application/json',
+          },
+        });
+
         const result = await response.json();
-        if (result.success) {
+        const validateId = await valiadteAccountid.json()
+
+        if (result.success && validateId.success !== false) {
           return new Response('ok', { status: 200 });
         } else {
           return Response.json({ error: 'Invalid credentials' }, { status: 401 });
