@@ -34,13 +34,15 @@ interface PlatformCredentials {
 // Fetch media from API Video
 const fetchApiVideoMedia = async (sourcePlatform: PlatformCredentials) => {
     const credentials = sourcePlatform?.credentials;
+    const endpoint = sourcePlatform?.credentials?.additionalMetadata?.environment === 'sandbox' ? "https://sandbox.api.video/videos" : "https://ws.api.video"
+
     const videos: any[] = [];
     let currentPage = 1;
     let totalPages = 1;
 
     try {
         do {
-            const response = await fetch(`https://sandbox.api.video/videos?currentPage=${currentPage}&pageSize=25`, {
+            const response = await fetch(`${endpoint}/videos?currentPage=${currentPage}&pageSize=25`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${credentials?.secretKey ?? ""}`,
