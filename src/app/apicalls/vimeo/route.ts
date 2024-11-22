@@ -1,3 +1,5 @@
+import { NextRequest, NextResponse } from 'next/server';
+
 interface MetaData {
     environment: string;
     platformId: string;
@@ -117,16 +119,15 @@ const createMedia = async (
     }
 };
 
-export default async function POST(request: Request) {
+export async function POST(request: NextRequest) {
     try {
         const data = await request.json();
         const sourcePlatform = data?.sourcePlatform;
         const destinationPlatform = data?.destinationPlatform;
 
         if (!sourcePlatform || !destinationPlatform) {
-
-            return new Response(
-                JSON.stringify({ message: 'Source or destination platform not provided' }),
+            return NextResponse.json(
+                { message: 'Source or destination platform not provided' },
                 { status: 400 }
             );
         }
@@ -135,8 +136,8 @@ export default async function POST(request: Request) {
             const videos = await fetchVimeoMedia(sourcePlatform);
 
             if (!videos || videos.length === 0) {
-                return new Response(
-                    JSON.stringify({ message: 'No videos found for the user' }),
+                return NextResponse.json(
+                    { message: 'No videos found for the user' },
                     { status: 404 }
                 );
             }
@@ -160,33 +161,30 @@ export default async function POST(request: Request) {
             }
 
             if (createdMedia.length > 0) {
-
-                return new Response(
-                    JSON.stringify({ success: true, createdMedia }),
-                    {
-                        status: 200,
-                        headers: { 'Content-Type': 'application/json' },
-                    }
+                return NextResponse.json(
+                    { success: true, createdMedia },
+                    { status: 200 }
                 );
             } else {
-
-                return new Response(
-                    JSON.stringify({ message: 'No media could be created' }),
+                return NextResponse.json(
+                    { message: 'No media could be created' },
                     { status: 400 }
                 );
             }
         } else {
-
-            return new Response(
-                JSON.stringify({ message: 'Invalid source platform' }),
+            return NextResponse.json(
+                { message: 'Invalid source platform' },
                 { status: 400 }
             );
         }
     } catch (error) {
-
-        return new Response(
-            JSON.stringify({ message: 'Internal server error' }),
+        console.error(error);
+        return NextResponse.json(
+            { message: 'Internal server error' },
             { status: 500 }
         );
     }
 }
+
+           
+         
