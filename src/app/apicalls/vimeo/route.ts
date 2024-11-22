@@ -1,5 +1,3 @@
-import { NextRequest, NextResponse } from 'next/server';
-
 interface MetaData {
     environment: string;
     platformId: string;
@@ -34,11 +32,6 @@ interface PlatformCredentials {
 const fetchVimeoMedia = async (sourcePlatform: PlatformCredentials) => {
     const token = sourcePlatform?.credentials?.secretKey;
 
-    if (!token) {
-
-        throw new Error("Missing Vimeo token in credentials");
-    }
-
     try {
         const response = await fetch('https://api.vimeo.com/me/videos', {
             method: 'GET',
@@ -47,17 +40,17 @@ const fetchVimeoMedia = async (sourcePlatform: PlatformCredentials) => {
                 'Content-Type': 'application/json',
             },
         });
- 
+
         if (response.ok) {
             const data = await response.json();
             return data?.data || [];
         } else {
 
-            throw new Error("Vimeo API error");
+            return { success: false, message: "Failed t0 get media" }
         }
     } catch (error) {
 
-        throw new Error("Vimeo API error");
+        return { success: false, message: error?.message ?? "Failed to get media" }
     }
 };
 
@@ -69,17 +62,13 @@ const createMedia = async (
     const credentials = destinationPlatform?.credentials;
     const url = 'https://v1.fastpix.io/on-demand';
 
-    if (!credentials?.publicKey || !credentials?.secretKey) {
-        throw new Error("Missing Fastpix credentials");
-    }
-
     const config = destinationPlatform?.config || {};
     const playbackPolicy = config?.playbackPolicy?.length === 1 ? "public" : "private";
     const testmode = config?.testMode ? config.testMode : null;
 
     const requestBody = {
         metadata: {
-            APIvideoId: videoId,
+            vimeoVideoId: videoId,
         },
         accessPolicy: playbackPolicy,
         inputs: [
@@ -111,23 +100,24 @@ const createMedia = async (
             return result;
         } else {
 
-            throw new Error("Failed to create media");
+            return { success: false, message: "Failed to create media" }
         }
     } catch (error) {
 
-        throw new Error("Failed to create media");
+        return { success: false, message: error?.message ?? "Failed t0 create media" }
     }
 };
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
     try {
         const data = await request.json();
         const sourcePlatform = data?.sourcePlatform;
         const destinationPlatform = data?.destinationPlatform;
 
         if (!sourcePlatform || !destinationPlatform) {
-            return NextResponse.json(
-                { message: 'Source or destination platform not provided' },
+
+            return new Response(
+                JSON.stringify({ message: 'Source or destination platform not provided' }),
                 { status: 400 }
             );
         }
@@ -136,8 +126,8 @@ export async function POST(request: NextRequest) {
             const videos = await fetchVimeoMedia(sourcePlatform);
 
             if (!videos || videos.length === 0) {
-                return NextResponse.json(
-                    { message: 'No videos found for the user' },
+                return new Response(
+                    JSON.stringify({ message: 'No videos found for the user' }),
                     { status: 404 }
                 );
             }
@@ -145,13 +135,16 @@ export async function POST(request: NextRequest) {
             const createdMedia = [];
 
             for (const video of videos) {
-                const mp4Asset = video?.download?.find((file: any) => file.type === 'mp4');
+
+                const mp4Asset = video?.download?.find((file) => file.quality === 'source');
+                const videoId = video?.uri?.split('/')?.[2];
+                const sourceDownloadLink = mp4Asset ? mp4Asset?.link : null;
 
                 if (mp4Asset) {
                     const createdMediaEntry = await createMedia(
                         destinationPlatform,
-                        mp4Asset.link,
-                        video.uri.split('/').pop()
+                        sourceDownloadLink,
+                        videoId
                     );
 
                     if (createdMediaEntry) {
@@ -161,30 +154,33 @@ export async function POST(request: NextRequest) {
             }
 
             if (createdMedia.length > 0) {
-                return NextResponse.json(
-                    { success: true, createdMedia },
-                    { status: 200 }
+
+                return new Response(
+                    JSON.stringify({ success: true, createdMedia }),
+                    {
+                        status: 200,
+                        headers: { 'Content-Type': 'application/json' },
+                    }
                 );
             } else {
-                return NextResponse.json(
-                    { message: 'No media could be created' },
-                    { status: 400 }
+
+                return new Response(
+                    JSON.stringify({ message: "No media created" }),
+                    { status: 400, }
                 );
             }
         } else {
-            return NextResponse.json(
-                { message: 'Invalid source platform' },
+
+            return new Response(
+                JSON.stringify({ message: "No media created" }),
                 { status: 400 }
             );
         }
     } catch (error) {
-        console.error(error);
-        return NextResponse.json(
-            { message: 'Internal server error' },
+
+        return new Response(
+            JSON.stringify({ message: error?.message ?? 'Internal server error' }),
             { status: 500 }
         );
     }
 }
-
-           
-         
