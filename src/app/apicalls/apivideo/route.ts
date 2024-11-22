@@ -42,7 +42,7 @@ const fetchApiVideoMedia = async (sourcePlatform: PlatformCredentials) => {
 
     try {
         do {
-            const response = await fetch(`${endpoint}/videos?currentPage=${currentPage}&pageSize=25`, {
+            const response = await fetch(`${endpoint}?currentPage=${currentPage}&pageSize=25`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${credentials?.secretKey ?? ""}`,
