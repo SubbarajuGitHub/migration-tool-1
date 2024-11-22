@@ -72,27 +72,26 @@ const MigrationStatus: React.FC = () => {
     }, [masterAccessVideosIds]);
 
     return (
-        <div className="p-2">
+          <div className="p-2">
             <Heading>REVIEW</Heading>
-            <p className="mt-[10px]">Before the big move, there's on</p>
+
+            <p className="mt-[10px]">Before the big move, there&apos;s one</p>
+
             {isVideosMigrating ? (
                 <div className="max-w-[900px] overflow-auto gap-y-4 flex flex-col justify-center items-center mt-[40px] h-[60vh]">
-                    <h2 className="text-xl md:text-2xl font-semibold">Videos are migrating...</h2>
+                    <h2 className="text-xl md:text-xl font-semibold">Videos are currently migrating. Please stay on this page, as the process may take a few moments.</h2>
                     <Loading />
                 </div>
             ) : (
                 <div className="max-w-[900px]">
 
-                    {
-                        masterAccessVideosIds?.length >= 1 ? (
-                            <div className="max-w-[900px] overflow-auto mt-[40px]">
-                                <h2>Migration is in still progress wait....</h2>
-                            </div>
-                        ) : ""
-                    }
+                    {masterAccessVideosIds?.length >= 1 && (
+                        <div className="max-w-[900px] overflow-auto mt-[40px] text-bold">
+                            <h2>Please hold on. Some files are still in the process of migrating. This may take a few moments. Thank you for your patience.</h2>
+                        </div>
+                    )}
 
                     <div className="overflow-x-auto rounded-lg mt-[40px] border border-light-grayish-blue max-h-[500px]">
-
                         {/* Header */}
                         <div className="grid grid-cols-[1fr_2fr_1fr] bg-[#F2F2F6] static top-0">
                             <div className="px-4 text-[12px] text-[#808091] py-2 text-left">SL.NO</div>
@@ -100,8 +99,17 @@ const MigrationStatus: React.FC = () => {
                             <div className="px-4 text-[12px] text-[#808091] py-2 text-left">STATUS</div>
                         </div>
 
-                        {
-                            migrationError?.[0]?.error === 'True' ? (<p className="text-xl text-red-700 font-bold p-4 text-center">Failed to migrate videos due to {migrationError?.[0].message}</p>) : ""
+                        {migrationError?.[0]?.error === 'True' && (
+                            <p className="text-xl text-red-700 font-bold p-4 text-center">
+                                Failed to migrate videos due to {migrationError?.[0]?.message}
+                            </p>
+                        )}
+
+                        {masterAccessVideosIds?.length === 0  && originPlatformVideos?.length === 0 && migrationError?.[0]?.error !== 'True' ? (
+                            <div className="text-xl text-black font-bold p-4 text-center">
+                                <p>We did not found any vidoes for migration </p>
+                            </div>
+                        ) : ""
                         }
 
                         {/* Body */}
@@ -124,10 +132,12 @@ const MigrationStatus: React.FC = () => {
 
                             {/* Render masterAccessVideos if length > 1 */}
                             {masterAccessVideos?.length >= 1 &&
-                                masterAccessVideos.map((video, index) =>
-                                    video?.id ? (
+                                masterAccessVideos.map((video, index) => {
+                                    const serialNo = index + originPlatformVideos?.length + 1;
+
+                                    return video?.id ? (
                                         <div key={`master-${index}`} className="grid grid-cols-[1fr_2fr_1fr] border">
-                                            <div className="px-4 py-2 text-sm sm:text-base">{index + 1}</div>
+                                            <div className="px-4 py-2 text-sm sm:text-base">{serialNo}</div>
                                             <div className="px-4 py-2 text-sm sm:text-base">{video?.id}</div>
                                             <div className="px-4 py-2 text-sm sm:text-base">
                                                 <div className="bg-[#E3EEFF] w-[120px] p-[5px] flex gap-x-2 items-center rounded-lg">
@@ -136,11 +146,10 @@ const MigrationStatus: React.FC = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    ) : null
-                                )
+                                    ) : null;
+                                })
                             }
                         </div>
-
                     </div>
                 </div>
             )}
