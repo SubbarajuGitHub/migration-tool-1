@@ -1,21 +1,24 @@
 import Mux from "@mux/mux-node";
-export const dynamic = 'force-dynamic';
 import { S3Client, HeadBucketCommand } from '@aws-sdk/client-s3';
 
 interface AdditionalMetaData {
-  environment?: string,
-  platformId: string
+  environment?: string;
+  platformId: string;
+  region?: string;
+  bucket?: string;
 }
 
 interface VideoPlatformCredentails {
-  publicKey: string,
-  secretKey: string,
-  additionalMetadata: AdditionalMetaData
+  publicKey: string;
+  secretKey: string;
+  additionalMetadata: AdditionalMetaData;
 }
 
-// for api-video
-export async function verifyApiVideo(data: VideoPlatformCredentails) {
-  const endpoint = data.additionalMetadata?.environment === 'sandbox' ? "https://sandbox.api.video" : "https://sandbox.api.video";
+// Verify API Video Credentials
+async function verifyApiVideo(data: VideoPlatformCredentails) {
+  const endpoint = data.additionalMetadata?.environment === 'sandbox'
+    ? "https://sandbox.api.video"
+    : "https://api.api.video";
 
   try {
     const response = await fetch(`${endpoint}/videos`, {
@@ -33,17 +36,16 @@ export async function verifyApiVideo(data: VideoPlatformCredentails) {
     } else {
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Invalid credentials' }, { status: 401 });
   }
 }
 
-// for fastpix
-export async function verifyFastPix(data: VideoPlatformCredentails) {
+// Verify FastPix Credentials
+async function verifyFastPix(data: VideoPlatformCredentails) {
   const endpoint = "https://v1.fastpix.io/on-demand";
- 
-  try {
 
+  try {
     const response = await fetch(`${endpoint}`, {
       method: 'GET',
       headers: {
@@ -59,17 +61,16 @@ export async function verifyFastPix(data: VideoPlatformCredentails) {
     } else {
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Invalid credentials' }, { status: 401 });
   }
 }
 
-// for vimeo
-export async function verifyVimeo(data: VideoPlatformCredentails) {
+// Verify Vimeo Credentials
+async function verifyVimeo(data: VideoPlatformCredentails) {
   const endpoint = "https://api.vimeo.com";
- 
-  try {
 
+  try {
     const response = await fetch(`${endpoint}/me`, {
       method: 'GET',
       headers: {
@@ -83,21 +84,20 @@ export async function verifyVimeo(data: VideoPlatformCredentails) {
     } else {
       return Response.json({ error: 'Invalid credentials' }, { status: 401 });
     }
-  } catch (error) {
+  } catch {
     return Response.json({ error: 'Invalid credentials' }, { status: 401 });
   }
 }
 
-export default async function POST(request: Request) {
-  const data = await request.json();
+// POST Handler
+export async function POST(request: Request) {
+  const data: VideoPlatformCredentails = await request.json();
 
   switch (data.additionalMetadata?.platformId) {
-    case 'api-video': {
-      const result = await verifyApiVideo(data);
-      return result;
-    }
+    case 'api-video':
+      return await verifyApiVideo(data);
 
-    case 'cloudflare-stream':
+    case 'cloudflare-stream': {
       try {
         const response = await fetch('https://api.cloudflare.com/client/v4/user/tokens/verify', {
           headers: {
@@ -112,11 +112,12 @@ export default async function POST(request: Request) {
         } else {
           return Response.json({ error: 'Invalid credentials' }, { status: 401 });
         }
-      } catch (error) {
+      } catch {
         return Response.json({ error: 'Invalid credentials' }, { status: 401 });
       }
+    }
 
-    case 's3':
+    case 's3': {
       const client = new S3Client({
         credentials: {
           accessKeyId: data.publicKey,
@@ -134,30 +135,30 @@ export default async function POST(request: Request) {
       try {
         await client.send(command);
         return new Response('ok', { status: 200 });
-      } catch (error) {
+      } catch {
         return Response.json({ error: 'Invalid credentials' }, { status: 401 });
       }
+    }
 
-    case 'mux':
+    case 'mux': {
       const mux = new Mux({
-        tokenId: data.publicKey as string,
-        tokenSecret: data.secretKey as string,
+        tokenId: data.publicKey,
+        tokenSecret: data.secretKey,
       });
 
       try {
         await mux.video.assets.list();
         return new Response('ok', { status: 200 });
-      } catch (error) {
+      } catch {
         return Response.json({ error: 'Invalid credentials' }, { status: 401 });
       }
+    }
 
-    case "vimeo":
-      const response = await verifyVimeo(data);
-      return response;
+    case 'vimeo':
+      return await verifyVimeo(data);
 
-    case "fastPix":
-      const result = await verifyFastPix(data);
-      return result;
+    case 'fastPix':
+      return await verifyFastPix(data);
 
     default:
       return Response.json({ error: 'Invalid platform provided' }, { status: 404 });
