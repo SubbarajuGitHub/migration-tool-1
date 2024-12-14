@@ -17,19 +17,11 @@ const platformOptions = [
       },
       {
         label: 'Max resolution tier',
-        description:
-          'This field controls the maximum resolution that FastPix will encode, store, and deliver your media in. FastPix does not to automatically ingest content at 4K so that you can avoid unexpectedly high ingest bills',
+        description:'This field controls the maximum resolution that FastPix will encode, store, and deliver your media in. FastPix does not to automatically ingest content at 4K so that you can avoid unexpectedly high ingest bills.',
         docsUrl: '',
         name: 'maxResolutionTier',
         type: 'select',
-        values: ['1080p', '1440p', '2160p']
-      },
-      {
-        label: 'Test mode',
-        description: 'For testing only. Limits asset duration to 10 seconds and adds a watermark to the video',
-        docsUrl: '',
-        name: 'testMode',
-        type: 'checkbox',
+        values: ['1080p', '1440p', '2160p', '720p', '480p']
       },
       {
         label: 'Playback policy',
@@ -65,18 +57,24 @@ const VideoSettings = () => {
         delete updatedConfig[field.name];
       }
       setConfig(updatedConfig);
-    } else if (field.type === 'multi-checkbox') {
-      let newArray = (config[field.name] || []);
-      if (value.checked) {
-        newArray = [...newArray, value.optionValue];
+    }
+    else if (field.type === 'multi-checkbox' || field.name === 'playbackPolicy') {
+      if (field.name === 'playbackPolicy') {
+        const updatedConfig = { ...config, [field.name]: [value.optionValue] };
+        setConfig(updatedConfig);
       } else {
-        newArray = newArray.filter((item) => item !== value.optionValue);
+        let newArray = config[field.name] || [];
+        if (value.checked) {
+          newArray = [...newArray, value.optionValue];
+        } else {
+          newArray = newArray.filter((item) => item !== value.optionValue);
+        }
+        const updatedConfig = newArray.length > 0 ? { ...config, [field.name]: newArray } : { ...config };
+        if (newArray.length === 0) {
+          delete updatedConfig[field.name];
+        }
+        setConfig(updatedConfig);
       }
-      const updatedConfig = newArray.length > 0 ? { ...config, [field.name]: newArray } : { ...config };
-      if (newArray.length === 0) {
-        delete updatedConfig[field.name];
-      }
-      setConfig(updatedConfig);
     } else {
       setConfig({ ...config, [field.name]: value });
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import processVideosForPlatform from "../fastpix/route";
 
 interface MetaData {
     environment: string;
@@ -77,60 +78,6 @@ const fetchS3Media = async (sourcePlatform: PlatformCredentials) => {
     }
 };
 
-const createMedia = async (
-    destinationPlatform: PlatformCredentials,
-    mp4Url: string,
-    fileKey: string
-) => {
-    const credentials = destinationPlatform?.credentials;
-    const url = 'https://v1.fastpix.io/on-demand';
-
-    const playbackPolicy = destinationPlatform?.config?.playbackPolicy?.length === 1 ? 'public' : 'private';
-    const testmode = destinationPlatform?.config?.testMode ? destinationPlatform.config.testMode : null;
-
-    const requestBody = {
-        metadata: {
-            s3Key: fileKey,
-        },
-        accessPolicy: playbackPolicy,
-        inputs: [
-            {
-                type: 'video',
-                url: mp4Url,
-                ...(testmode === '1' ? { startTime: 0, endTime: 10 } : {}),
-            },
-        ],
-        mp4Support: 'capped_4k',
-    };
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                Authorization: `Basic ${Buffer.from(
-                    `${credentials.publicKey}:${credentials.secretKey}`
-                ).toString('base64')}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (response.ok) {
-            const res = await response.json();
-
-            return {
-                success: true,
-                response: res,
-            };
-        } else {
-            return { success: false, message: 'Failed to create media on fastpix' };
-        }
-    } catch (error) {
-        return { success: false, message: error?.message ?? 'Failed to create media on fastpix' };
-    }
-};
-
 export async function POST(request: NextRequest) {
     try {
         const data = await request.json();
@@ -147,27 +94,24 @@ export async function POST(request: NextRequest) {
         }
 
         const videos = response?.response ?? [];
-        const createdMedia = [];
+        const result = await processVideosForPlatform(destinationPlatform, videos, "amazon-s3");
 
-        for (const video of videos) {
-            const createdMediaEntry = await createMedia(destinationPlatform, video?.url, video?.key);
+        const createdMedia = result.createdMedia
+        const failedMedia = result.failedMedia
 
-            if (createdMediaEntry?.response) {
-                createdMedia.push(createdMediaEntry?.response);
-            }
-        }
-
-        if (createdMedia.length > 0) {
+        if (createdMedia.length > 0 || failedMedia.length > 0) {
             return NextResponse.json(
-                { success: true, createdMedia },
+                { success: true, createdMedia, failedMedia },
                 { status: 200 }
             );
         } else {
+            const errorMsg = videos.length === 0 ? "No Vidoes found in AmazonS3 Video" : "Failed to create Media"
             return NextResponse.json(
-                { message: 'No media could be created' },
+                { error:  errorMsg},
                 { status: 400 }
             );
         }
+        
     } catch (error: any) {
         return NextResponse.json(
             { message: error.message ?? 'An unexpected error occurred' },

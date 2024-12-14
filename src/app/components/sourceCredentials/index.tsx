@@ -21,7 +21,6 @@ const PLATFORM_CREDENTIALS = [
     name: 'Api.video',
     id: 'api-video',
     values: [
-      { label: 'Account email', name: 'publicKey', type: 'text' },
       { label: 'API Key', name: 'secretKey', type: 'text' },
       { label: 'Environment', name: 'environment', type: 'select', values: ['sandbox', 'production'] },
     ],
@@ -71,6 +70,11 @@ const PlatformForm = (props: Form) => {
   const setPlatform = useMigrationStore((state) => state.setPlatform);
   const [errorUsercredentials, setErrorUsercredentials] = useState([]);
   const [error, setError] = useState(false);
+   
+  const [buttonDisabled, setButtonDisabled] = useState(true);
+  const [secretKey, setSecretKey] = useState("");
+  const [publicKey, setPublicKey] = useState("");
+  const [bucketName, setBucketName] = useState("");
 
   useEffect(() => {
     const platform = PLATFORM_CREDENTIALS.find(p => p.id === selectedPlatform?.id);
@@ -84,6 +88,7 @@ const PlatformForm = (props: Form) => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    setButtonDisabled(true);
     const formData = new FormData(e.currentTarget);
     const rawData = Object.fromEntries(formData.entries());
     const { publicKey, secretKey, ...additionalMetadata } = rawData;
@@ -130,9 +135,59 @@ const PlatformForm = (props: Form) => {
     ));
   };
 
+  const getOnChangeEvents=(e)=> {
+    setError(false);
+
+    setErrorUsercredentials([]);
+    switch(selectedPlatform.id) {
+      case "mux":
+      case "fastPix":
+      case "cloudflare-stream":
+        if (e.target.id === "secretKey"){
+          publicKey !== "" && e.target.value !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setSecretKey(e.target.value);
+        } else if (e.target.id === "publicKey"){
+          e.target.value !== "" && secretKey !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setPublicKey(e.target.value);
+        }
+      break;
+
+      case "api-video":
+        console.log(e.target)
+       if (e.target.id === "secretKey"){
+          e.target.value !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setPublicKey(e.target.value);
+        } 
+      break;
+
+      case "s3":
+        if (e.target.id === "secretKey"){
+          publicKey !== "" && e.target.value !== "" && bucketName !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setSecretKey(e.target.value);
+        } else if (e.target.id === "publicKey"){
+          e.target.value !== "" && secretKey !== "" && bucketName !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setPublicKey(e.target.value);
+        } else if (e.target.id === "bucket"){
+          e.target.value !== "" && secretKey !== "" && publicKey !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setBucketName(e.target.value);
+        }
+      break;
+
+      case "vimeo":
+        if (e.target.id === "secretKey"){
+          e.target.value !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
+          setSecretKey(e.target.value);
+        }
+      break
+      default:
+
+      return null
+    } 
+  }
+
   return (
-    <form onSubmit={onSubmit} className="p-4">
-      <Heading>Enter your {platformName}</Heading>
+    <form onSubmit={onSubmit} className="p-4" onChange={(e)=>getOnChangeEvents(e)}>
+      <Heading>Enter your {platformName} Credentials</Heading>
       <p className="text-slate-gray font-normal text-[15px] py-[10px]">Your credentials are stored locally and encrypted in transit.</p>
 
       {renderInputs()}
@@ -144,7 +199,7 @@ const PlatformForm = (props: Form) => {
         ) : ""
       }
 
-      <button type="submit" className={`mt-4 bg-black text-white w-full max-w-[400px] h-[48px] rounded p-[12px]`}>
+      <button type="submit" disabled={buttonDisabled} className={`${buttonDisabled ? "opacity-[50%] bg-black" : "hover:cursor-pointer"} mt-4 bg-black hover:bg-gray-800 text-white w-full max-w-[400px] h-[48px] rounded p-[12px]`}>
         Verify Credentials
       </button>
    

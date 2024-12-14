@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import processVideosForPlatform from "../fastpix/route";
 
 interface MetaData {
     environment: string;
@@ -62,55 +63,7 @@ const fetchApiVideoMedia = async (sourcePlatform: PlatformCredentials) => {
 
         return { success: true, videos };
     } catch (error: any) {
-        return { success: false, message: error.message };
-    }
-};
-
-// Create media in Fastpix
-const createMediaInFastpix = async (
-    destinationPlatform: PlatformCredentials,
-    videoUrl: string,
-    videoId: string
-) => {
-    const credentials = destinationPlatform?.credentials;
-    const config = destinationPlatform?.config;
-    const playbackPolicy = config?.playbackPolicy?.length === 1 ? "public" : "private";
-    const testMode = config?.testMode === "1";
-
-    const requestBody = {
-        metadata: {
-            APIvideoId: videoId,
-        },
-        accessPolicy: playbackPolicy,
-        inputs: [
-            {
-                type: "video",
-                url: videoUrl,
-                ...(testMode ? { startTime: 0, endTime: 10 } : {}),
-            },
-        ],
-        mp4Support: "capped_4k",
-    };
-
-    try {
-        const response = await fetch("https://v1.fastpix.io/on-demand", {
-            method: "POST",
-            headers: {
-                Accept: "application/json",
-                "Content-Type": "application/json",
-                Authorization: `Basic ${Buffer.from(
-                    `${credentials?.publicKey ?? ""}:${credentials?.secretKey ?? ""}`
-                ).toString("base64")}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to create media in Fastpix");
-        }
-
-        return { success: true, response: await response.json() };
-    } catch (error: any) {
+        
         return { success: false, message: error.message };
     }
 };
@@ -136,31 +89,20 @@ export async function POST(request: NextRequest) {
         }
 
         const videos = fetchResult.videos;
-        const createdMedia = [];
-        const failedMedia = [];
 
-        for (const video of videos) {
-            const mp4Url = video?.assets?.mp4;
-            if (mp4Url !== "none") {
-                const videoId = video.videoId;
-                const result = await createMediaInFastpix(destinationPlatform, mp4Url, videoId);
+        const result = await processVideosForPlatform(destinationPlatform, videos, "apivideo");
+        const createdMedia = result.createdMedia
+        const failedMedia = result.failedMedia
 
-                if (result.success) {
-                    createdMedia.push(result.response);
-                } else {
-                    failedMedia.push({ videoId, error: result.message });
-                }
-            }
-        }
-
-        if (createdMedia.length > 0) {
+        if (createdMedia.length > 0 || failedMedia.length > 0) {
             return NextResponse.json(
                 { success: true, createdMedia, failedMedia },
                 { status: 200 }
             );
         } else {
+            const errorMsg = videos.length === 0 ? "No Vidoes found in API Video" : "Failed to create Media"
             return NextResponse.json(
-                { error: "No media were created" },
+                { error:  errorMsg},
                 { status: 400 }
             );
         }

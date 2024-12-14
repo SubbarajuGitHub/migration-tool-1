@@ -1,3 +1,6 @@
+import processVideosForPlatform from "../fastpix/route";
+import { NextRequest, NextResponse } from "next/server";
+
 interface MetaData {
     environment: string,
     platformId: string
@@ -56,57 +59,6 @@ const fetchCloudflareMedia = async (sourcePlatform: PlatformCredentials) => {
     }
 };
 
-// create media in fastpix
-const createMedia = async (destinationPlatform: PlatformCredentials, mp4_support: string, videoId: string) => {
-    const credentials = destinationPlatform?.credentials ? destinationPlatform.credentials : null;
-    const url = 'https://v1.fastpix.io/on-demand';
-
-    const config = destinationPlatform?.config ? destinationPlatform.config : null;
-    const maxResolutionTier = config?.maxResolutionTier ? config.maxResolutionTier : null;
-    const playbackPolicy = config?.playbackPolicy?.length === 1 ? "public" : "private";
-    const testmode = config?.testMode ? config.testMode : null;
-
-    const requestBody = {
-        metadata: {
-            "CloudflareVideoId": videoId,
-        },
-        accessPolicy: playbackPolicy,
-        maxResolution: maxResolutionTier,
-        inputs: [
-            {
-                type: 'video',
-                url: `${mp4_support}`,
-                ...(testmode === "1" ? { startTime: 0, endTime: 10 } : {})
-            },
-        ],
-        mp4Support: "capped_4k",
-    };
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic ' + Buffer.from(`${credentials?.publicKey ? credentials.publicKey : null}:${credentials?.secretKey ? credentials.secretKey : null}`).toString('base64')
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (response.ok) {
-
-            const res = await response.json();
-            return { success: true, response: res };
-        } else {
-
-            return { success: false, message: "Failed to create media in fastpix" };
-        }
-    } catch (error) {
-
-        return { success: false, message: error?.message ?? "Failed to create media in fastpix" };
-    }
-};
-
 // get download url from Cloudflare
 const getDownloadUrl = async (sourcePlatform: PlatformCredentials, videoId: string) => {
     const credentials = sourcePlatform?.credentials ? sourcePlatform.credentials : null;
@@ -146,31 +98,48 @@ export async function POST(request: Request) {
     if (!result.success) {
 
         return new Response(JSON.stringify({ message: 'Failed to fetch media from Cloudflare' }), { status: 400 });
+    } 
+    else if (result?.response?.result?.length === 0) {
+        return NextResponse.json({ success: false, message: "No Vidoes found in Cloudfare Video" }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+        };
     }
 
     const videos = result?.response?.result ?? []; // Cloudflare video media
-    const createdMedia = [];
+    let allDownloadUrls = 0;
+    const videoData = [];  // Store video IDs and download URLs
 
     for (const video of videos) {
         const videoId = video.uid;
         const response = await getDownloadUrl(sourcePlatform, videoId);
         const downloadurl = response?.response?.result?.default?.url ?? "";
+        allDownloadUrls += 1;
 
-        const createdMediaItem = await createMedia(destinationPlatform, downloadurl, videoId);
-        if (createdMediaItem?.response) {
-            createdMedia.push(createdMediaItem?.response);
-        }
+        videoData.push({ videoId, downloadurl });
+
     }
 
-    if (createdMedia.length > 0) {
+    if (videos.length === allDownloadUrls) {
+        await new Promise(resolve => setTimeout(resolve, 30000));
 
-        return new Response(JSON.stringify({ success: true, createdMedia }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
-        });
-    } else {
+        const result = await processVideosForPlatform(destinationPlatform, videoData, "cloudfare")
+            
+        const createdMedia = result.createdMedia
+        const failedMedia = result.failedMedia
 
-        return new Response(JSON.stringify({ message: 'No media were created' }), { status: 400 });
+        if (createdMedia.length > 0 || failedMedia.length > 0) {
+            return NextResponse.json(
+                { success: true, createdMedia, failedMedia },
+                { status: 200 }
+            );
+        } else {
+            const errorMsg = videos.length === 0 ? "No Vidoes found in Cloudfare Video" : "Failed to create Media"
+            return NextResponse.json(
+                { error:  errorMsg},
+                { status: 400 }
+            );
+        }
     }
 
 }

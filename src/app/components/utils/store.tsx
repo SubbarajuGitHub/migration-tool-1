@@ -14,6 +14,7 @@ type MigrationStep =
   | 'migration-status';
 
 type Platform = {
+  id: string;
   name: string;
   logo: string;
   credentials?: {
@@ -45,8 +46,6 @@ type MigrationActions = {
   setPlatform: (type: 'source' | 'destination', platform: Platform | null) => void;
   setOriginVideos: (videos: Video[]) => void;
   setIsVideosMigrating: (value: boolean) => void;
-  setMasterAccessVideosIds: (videos: string[]) => void;
-  setMasterAccessVideos: (videos: Media[]) => void;
   setMigrationError: (error: Error[]) => void;
 };
 
@@ -77,6 +76,11 @@ interface Error {
   errorMessage: string
 }
 
+interface FailedVideo {
+  videoId: string,
+  error: string
+}
+
 const useMigrationStore = create<MigrationState & MigrationActions>()(
   persist(
     immer((set) => ({
@@ -87,9 +91,8 @@ const useMigrationStore = create<MigrationState & MigrationActions>()(
       originVideosList: [],
       currentStep: 'select-source',
       isVideosMigrating: false,
-      masterAccessVideosIds: [],
-      masterAccessVideos: [],
       migrationError: {},
+      failedVideos: [],
 
       setCurrentStep: (step: MigrationStep) => {
         set({ currentStep: step });
@@ -116,17 +119,13 @@ const useMigrationStore = create<MigrationState & MigrationActions>()(
         set({ isVideosMigrating: value });
       },
 
-      setMasterAccessVideosIds: (videos: string[]) => {
-        set({ masterAccessVideosIds: videos });
-      },
-
-      setMasterAccessVideos: (videos: Media[]) => {
-        set({ masterAccessVideos: videos });
-      },
-
       setMigrationError: (error: Error[]) => {
         set({ migrationError: error });
       },
+
+      setFailedVideos: (videos: FailedVideo[])=> {
+       set({failedVideos: videos})
+      }
     })),
     {
       name: 'fp-migration-storage',

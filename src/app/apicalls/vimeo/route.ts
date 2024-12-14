@@ -1,3 +1,6 @@
+import processVideosForPlatform from "../fastpix/route";
+import { NextResponse } from "next/server";
+
 interface MetaData {
     environment: string;
     platformId: string;
@@ -54,60 +57,6 @@ const fetchVimeoMedia = async (sourcePlatform: PlatformCredentials) => {
     }
 };
 
-const createMedia = async (
-    destinationPlatform: PlatformCredentials,
-    mp4Url: string,
-    videoId: string
-) => {
-    const credentials = destinationPlatform?.credentials;
-    const url = 'https://v1.fastpix.io/on-demand';
-
-    const config = destinationPlatform?.config || {};
-    const playbackPolicy = config?.playbackPolicy?.length === 1 ? "public" : "private";
-    const testmode = config?.testMode ? config.testMode : null;
-
-    const requestBody = {
-        metadata: {
-            vimeoVideoId: videoId,
-        },
-        accessPolicy: playbackPolicy,
-        inputs: [
-            {
-                type: 'video',
-                url: mp4Url,
-                ...(testmode === "1" ? { startTime: 0, endTime: 10 } : {})
-            },
-        ],
-        mp4Support: 'capped_4k',
-    };
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                Accept: 'application/json',
-                'Content-Type': 'application/json',
-                Authorization: `Basic ${Buffer.from(
-                    `${credentials.publicKey}:${credentials.secretKey}`
-                ).toString('base64')}`,
-            },
-            body: JSON.stringify(requestBody),
-        });
-
-        if (response.ok) {
-
-            const result = await response.json();
-            return result;
-        } else {
-
-            return { success: false, message: "Failed to create media" }
-        }
-    } catch (error) {
-
-        return { success: false, message: error?.message ?? "Failed t0 create media" }
-    }
-};
-
 export async function POST(request: Request) {
     try {
         const data = await request.json();
@@ -116,7 +65,7 @@ export async function POST(request: Request) {
 
         if (!sourcePlatform || !destinationPlatform) {
 
-            return new Response(
+            return NextResponse.json(
                 JSON.stringify({ message: 'Source or destination platform not provided' }),
                 { status: 400 }
             );
@@ -126,59 +75,39 @@ export async function POST(request: Request) {
             const videos = await fetchVimeoMedia(sourcePlatform);
 
             if (!videos || videos.length === 0) {
-                return new Response(
+                return NextResponse.json(
                     JSON.stringify({ message: 'No videos found for the user' }),
                     { status: 404 }
                 );
             }
 
-            const createdMedia = [];
+            const result = await processVideosForPlatform(destinationPlatform, videos, "vimeo")
 
-            for (const video of videos) {
+            const createdMedia = result.createdMedia
+            const failedMedia = result.failedMedia
 
-                const mp4Asset = video?.download?.find((file) => file.quality === 'source');
-                const videoId = video?.uri?.split('/')?.[2];
-                const sourceDownloadLink = mp4Asset ? mp4Asset?.link : null;
-
-                if (mp4Asset) {
-                    const createdMediaEntry = await createMedia(
-                        destinationPlatform,
-                        sourceDownloadLink,
-                        videoId
-                    );
-
-                    if (createdMediaEntry) {
-                        createdMedia.push(createdMediaEntry);
-                    }
-                }
-            }
-
-            if (createdMedia.length > 0) {
-
-                return new Response(
-                    JSON.stringify({ success: true, createdMedia }),
-                    {
-                        status: 200,
-                        headers: { 'Content-Type': 'application/json' },
-                    }
+            if (createdMedia.length > 0 || failedMedia.length > 0) {
+                return NextResponse.json(
+                    { success: true, createdMedia, failedMedia },
+                    { status: 200 }
                 );
             } else {
-
-                return new Response(
-                    JSON.stringify({ message: "No media created" }),
-                    { status: 400, }
+                const errorMsg = videos.length === 0 ? "No Vidoes found in API Video" : "Failed to create Media"
+                return NextResponse.json(
+                    { error: errorMsg },
+                    { status: 400 }
                 );
             }
         } else {
 
-            return new Response(
+            return NextResponse.json(
                 JSON.stringify({ message: "No media created" }),
                 { status: 400 }
             );
         }
     } catch (error) {
 
-        return new Response(
+        return NextResponse.json(
             JSON.stringify({ message: error?.message ?? 'Internal server error' }),
             { status: 500 }
         );
