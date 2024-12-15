@@ -49,36 +49,17 @@ type MigrationActions = {
   setMigrationError: (error: Error[]) => void;
 };
 
-interface Media {
-  video_quality: string;
-  tracks: Array<Record<string, unknown>>;
-  test: boolean;
-  status: string;
-  resolution_tier: string;
-  progress: Record<string, string>;
-  playback_ids: Array<Record<string, unknown>>;
-  mp4_support: string;
-  max_stored_resolution: string;
-  max_stored_frame_rate: number;
-  max_resolution_tier: string;
-  master_access: string;
-  master: Record<string, string>;
-  ingest_type: string;
-  id: string;
-  encoding_tier: string;
-  duration: number;
-  created_at: string;
-  aspect_ratio: string;
-}
-
 interface Error {
-  error: Boolean,
-  errorMessage: string
+  success: Boolean,
+  status: string,
+  message: string
 }
 
 interface FailedVideo {
   videoId: string,
-  error: string
+  code: string,
+  message: string,
+  fields: any
 }
 
 const useMigrationStore = create<MigrationState & MigrationActions>()(

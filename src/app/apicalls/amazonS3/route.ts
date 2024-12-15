@@ -1,41 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, ListObjectsV2Command } from '@aws-sdk/client-s3';
 import processVideosForPlatform from "../fastpix/route";
-
-interface MetaData {
-    environment: string;
-    platformId: string;
-    bucket?: string;
-    region?: string;
-}
-
-interface LogoImage {
-    key: null;
-    props: Record<string, string>;
-    _owner: string;
-    _store: Record<string, string>;
-}
-
-interface Credentials {
-    publicKey: string;
-    secretKey: string;
-    logo: LogoImage;
-    additionalMetadata: MetaData;
-    accessKeyId: string;
-    secretAccessKey: string;
-}
-
-interface VideoConfig {
-    encodingTier: string;
-    playbackPolicy: Array<string>;
-}
-
-interface PlatformCredentials {
-    id: string;
-    name: string;
-    credentials: Credentials;
-    config?: VideoConfig;
-}
+import { PlatformCredentials } from '../../components/utils/types';
 
 const fetchS3Media = async (sourcePlatform: PlatformCredentials) => {
     const { publicKey, secretKey, additionalMetadata } = sourcePlatform.credentials;
@@ -68,13 +34,15 @@ const fetchS3Media = async (sourcePlatform: PlatformCredentials) => {
 
         return {
             success: true,
-            response: videos.map(video => ({
-                key: video.Key,
-                url: `https://${bucket}.s3.amazonaws.com/${video.Key}`,
+            videos: videos.map(video => ({
+                videoId: video.Key ?? null,
+                mp4_url: `https://${bucket}.s3.amazonaws.com/${video.Key}`,
+                ETag: video.ETag ?? null
             })),
         };
     } catch (error) {
-        return { success: false, message: error?.message ?? 'Failed to fetch video from API Video' };
+
+        return { success: false, status: 404, message: error?.message };
     }
 };
 
@@ -84,37 +52,40 @@ export async function POST(request: NextRequest) {
         const sourcePlatform = data?.sourcePlatform as PlatformCredentials;
         const destinationPlatform = data?.destinationPlatform as PlatformCredentials;
 
-        const response = await fetchS3Media(sourcePlatform);
+        const amazonS3Response = await fetchS3Media(sourcePlatform); // amazonS3 Response
 
-        if (!response.success) {
+        if (!amazonS3Response.success) {
             return NextResponse.json(
-                { message: response.message ?? 'No videos found in S3 bucket' },
+                { message: amazonS3Response.message ?? "Something went wrong while fetching videos from Amazon S3" },
                 { status: 404 }
             );
         }
+     
+        const videos = amazonS3Response.videos ?? []; // Vidoes from amazon s3
+        const result = await processVideosForPlatform(destinationPlatform, videos, "amazon-s3"); // process videos in fastpix
 
-        const videos = response?.response ?? [];
-        const result = await processVideosForPlatform(destinationPlatform, videos, "amazon-s3");
+        const createdMedia = result.createdMedia; // created vidoes in fastpix
+        const failedMedia = result.failedMedia; // failed vidoes in fastpix
 
-        const createdMedia = result.createdMedia
-        const failedMedia = result.failedMedia
-
-        if (createdMedia.length > 0 || failedMedia.length > 0) {
+        if (createdMedia.length > 0 || failedMedia.length > 0) { // Either video is created or failed to create we send the response
+            
             return NextResponse.json(
                 { success: true, createdMedia, failedMedia },
                 { status: 200 }
             );
-        } else {
-            const errorMsg = videos.length === 0 ? "No Vidoes found in AmazonS3 Video" : "Failed to create Media"
+        } else { // If there are no vidoes in amazon s3 then we send 404
+            const errorMsg = videos.length === 0 ? "No Vidoes found in AmazonS3 Video" : "Something went wrong";
+            
             return NextResponse.json(
-                { error:  errorMsg},
-                { status: 400 }
+                { message:  errorMsg},
+                { status: videos.length === 0 ? 404 : 400 }
             );
         }
         
     } catch (error: any) {
+
         return NextResponse.json(
-            { message: error.message ?? 'An unexpected error occurred' },
+            { message: error.message ?? "An unexpected error occurred" },
             { status: 500 }
         );
     }

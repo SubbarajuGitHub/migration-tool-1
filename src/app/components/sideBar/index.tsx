@@ -22,7 +22,7 @@ const SideBar = () => {
             <p className="text-slate-gray font-normal text-[15px] py-[20px]">This list will build as you get ready for your move.</p>
     
             {sourcePlatform && (
-                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] ${currentStep === "set-source-credentials" ? "border-foggy-gray" : "border-foggy-gray"}`}>
+                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] hover:border-black ${currentStep === "set-source-credentials" ? "border-foggy-gray" : "border-foggy-gray"}`}>
                     <div className="flex flex-col">
                         <p className="font-semibold text-[15px]">Origin Platform</p>
                         <p className="text-[15px] font-[400px] text-slate-gray">{sourcePlatform?.name}</p>
@@ -45,7 +45,7 @@ const SideBar = () => {
             )}
     
             {sourcePlatform?.credentials && (
-                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] ${currentStep === "set-video-filter" ? "border-foggy-gray" : "border-foggy-gray"}`}>
+                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] hover:border-black ${currentStep === "set-video-filter" ? "border-foggy-gray" : "border-foggy-gray"}`}>
                     <div className="flex flex-col">
                         <h3 className="font-semibold text-[15px]">Origin Credentials</h3>
                         <p className="text-[15px] font-[400px] text-slate-gray">Added your credentials</p>
@@ -67,7 +67,7 @@ const SideBar = () => {
             )}
     
             {assetFilter !== null && (
-                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] ${currentStep === "select-destination" ? "border-foggy-gray" : "border-foggy-gray"}`}>
+                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] hover:border-black ${currentStep === "select-destination" ? "border-foggy-gray" : "border-foggy-gray"}`}>
                     <div className="flex flex-col">
                         <h3 className="font-semibold text-[15px]">Video selection</h3>
                         <p className="text-[15px] font-[400px] text-slate-gray">Select transfer range</p>
@@ -89,7 +89,7 @@ const SideBar = () => {
             )}
     
             {destinationPlatform && (
-                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] ${currentStep === "set-destination-credentials" ? "border-foggy-gray" : "border-foggy-gray"}`}>
+                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] hover:border-black ${currentStep === "set-destination-credentials" ? "border-foggy-gray" : "border-foggy-gray"}`}>
                     <div className="flex flex-col">
                         <h3 className="font-semibold text-[15px]">Target Platform</h3>
                         <p className="text-[15px] font-[400px] text-slate-gray">{destinationPlatform?.name}</p>
@@ -111,7 +111,7 @@ const SideBar = () => {
             )}
     
             {destinationPlatform?.credentials && (
-                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] ${currentStep === "set-import-settings" ? "border-foggy-gray" : "border-foggy-gray"}`}>
+                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] hover:border-black ${currentStep === "set-import-settings" ? "border-foggy-gray" : "border-foggy-gray"}`}>
                     <div className="flex flex-col">
                         <h3 className="font-semibold text-[15px]">Target credentials</h3>
                         <p className="text-[15px] font-[400px] text-slate-gray">Added your credentials </p>
@@ -133,7 +133,7 @@ const SideBar = () => {
             )}
     
             {destinationPlatform?.config && (
-                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] ${currentStep === "review" || currentStep === "migration-status" ? "border-foggy-gray" : "border-foggy-gray"}`}>
+                <div className={`flex justify-between border p-2 rounded-lg mb-[20px] hover:border-black ${currentStep === "review" || currentStep === "migration-status" ? "border-foggy-gray" : "border-foggy-gray"}`}>
                     <div className="flex flex-col">
                         <h3 className="font-semibold text-[15px]">Import settings</h3>
                         <p className="text-[15px] font-[400px] text-slate-gray">Settings added</p>

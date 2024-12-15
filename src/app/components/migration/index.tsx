@@ -1,9 +1,10 @@
-import React, { useEffect } from "react";
+import React from "react";
 import Heading from "../heading";
 import CreatedIcon from "../icons/created";
 import useMigrationStore from "../utils/store";
 import Loading from "../loading";
-import FailedIcon from "../icons/error";
+import ErrorUI from "../error";
+import FailedVideos from "../failedVideos";
 
 export interface PlaybackId {
     id: string;
@@ -48,23 +49,26 @@ const MigrationStatus: React.FC = () => {
                     <Loading />
                 </div>
             ) : (
+                <>
+                <h2 className={`my-4 ${failedVideos.length >= 1 ? "font-bold block" : "hidden"}`}>Failed Videos List</h2>
                 <div className="max-w-[900px]">
-                    <div className="overflow-x-auto rounded-lg mt-[40px] border border-light-grayish-blue max-h-[500px]">
-                        {/* Header */}
-                        <div className="grid grid-cols-[1fr_2fr_1fr] bg-[#F2F2F6] static top-0">
+                    <div className="overflow-x-auto my-[20px] rounded-lg border border-light-grayish-blue max-h-[500px]">
+   
+                        <div className={`grid grid-cols-[1fr_2fr_1fr] bg-[#F2F2F6] static top-0 ${failedVideos?.length === 0 ? "" : "hidden"}`}>
                             <div className="px-4 text-[12px] text-[#808091] py-2 text-left">SL.NO</div>
                             <div className="px-4 text-[12px] text-[#808091] py-2 text-left">VIDEO ID</div>
                             <div className="px-4 text-[12px] text-[#808091] py-2 text-left">STATUS</div>
                         </div>
 
-                        {migrationError?.[0]?.error === 'True' && (
-                            <p className="text-xl text-red-700 font-bold p-4 text-center">
-                                Failed to migrate videos due to {migrationError?.[0]?.message}
-                            </p>
-                        )}
+                        {
+                            migrationError?.success ?
+                                (
+                                    <ErrorUI title={migrationError?.[0]?.message} code={migrationError?.[0]?.status} />
+                                )
+                                : ""
+                        }
 
-                        {/* Render originPlatformVideos */}
-                        {originPlatformVideos?.map((video, index) =>
+                        {failedVideos?.length === 0 && originPlatformVideos?.map((video, index) =>
                             video?.data?.id ? (
                                 <div key={index} className="grid grid-cols-[1fr_2fr_1fr] border">
                                     <div className="px-4 py-2 text-sm sm:text-base">{index + 1}</div>
@@ -78,20 +82,13 @@ const MigrationStatus: React.FC = () => {
                                 </div>
                             ) : null
                         )}
-                        {failedVideos?.map((video, index) => (
-                            <div key={index} className="grid grid-cols-[1fr_2fr_1fr] border">
-                                <div className="px-4 py-2 text-sm sm:text-base">{index + 1}</div>
-                                <div className="px-4 py-2 text-sm sm:text-base">{video?.videoId}</div>
-                                <div className="px-4 py-2 text-sm sm:text-base">
-                                    <div className="bg-[#FBE1DF] p-[5px] flex gap-x-2 items-center rounded-lg">
-                                        <span className="text-[#E20E0E]"><FailedIcon /></span>
-                                        <span className="text-[#E20E0E] text-[12px]">{video?.error}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+
+                        {failedVideos?.length >= 1 ? (
+                                <FailedVideos failedVideos={failedVideos} />
+                        ) : ""}
                     </div>
                 </div>
+                </>
             )}
         </div>
     );

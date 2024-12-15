@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Heading from "../heading";
 import useMigrationStore from "../utils/store";
+import Notification from "../notification";
 
 interface Form {
   type: string
@@ -70,7 +71,6 @@ const PlatformForm = (props: Form) => {
   const setPlatform = useMigrationStore((state) => state.setPlatform);
   const [errorUsercredentials, setErrorUsercredentials] = useState([]);
   const [error, setError] = useState(false);
-   
   const [buttonDisabled, setButtonDisabled] = useState(true);
   const [secretKey, setSecretKey] = useState("");
   const [publicKey, setPublicKey] = useState("");
@@ -116,7 +116,6 @@ const PlatformForm = (props: Form) => {
 
   const renderInputs = () => {
     const platform = PLATFORM_CREDENTIALS.find(p => p.id === selectedPlatform?.id);
-    
     if (!platform) return null;
 
     return platform.values.map((input, index) => (
@@ -135,75 +134,84 @@ const PlatformForm = (props: Form) => {
     ));
   };
 
-  const getOnChangeEvents=(e)=> {
+  const getOnChangeEvents = (e) => {
     setError(false);
 
     setErrorUsercredentials([]);
-    switch(selectedPlatform.id) {
+    switch (selectedPlatform.id) {
       case "mux":
       case "fastPix":
       case "cloudflare-stream":
-        if (e.target.id === "secretKey"){
+        if (e.target.id === "secretKey") {
           publicKey !== "" && e.target.value !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setSecretKey(e.target.value);
-        } else if (e.target.id === "publicKey"){
+        } else if (e.target.id === "publicKey") {
           e.target.value !== "" && secretKey !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setPublicKey(e.target.value);
         }
-      break;
+        break;
 
       case "api-video":
-        console.log(e.target)
-       if (e.target.id === "secretKey"){
+        if (e.target.id === "secretKey") {
           e.target.value !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setPublicKey(e.target.value);
-        } 
-      break;
+        }
+        break;
 
       case "s3":
-        if (e.target.id === "secretKey"){
+        if (e.target.id === "secretKey") {
           publicKey !== "" && e.target.value !== "" && bucketName !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setSecretKey(e.target.value);
-        } else if (e.target.id === "publicKey"){
+        } else if (e.target.id === "publicKey") {
           e.target.value !== "" && secretKey !== "" && bucketName !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setPublicKey(e.target.value);
-        } else if (e.target.id === "bucket"){
+        } else if (e.target.id === "bucket") {
           e.target.value !== "" && secretKey !== "" && publicKey !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setBucketName(e.target.value);
         }
-      break;
+        break;
 
       case "vimeo":
-        if (e.target.id === "secretKey"){
+        if (e.target.id === "secretKey") {
           e.target.value !== "" ? setButtonDisabled(false) : setButtonDisabled(true);
           setSecretKey(e.target.value);
         }
-      break
+        break
       default:
 
-      return null
-    } 
+        return null
+    }
+  }
+
+  const setNotificationClose = (value) => {
+    setError(value);
+    setErrorUsercredentials([]);
   }
 
   return (
-    <form onSubmit={onSubmit} className="p-4" onChange={(e)=>getOnChangeEvents(e)}>
-      <Heading>Enter your {platformName} Credentials</Heading>
-      <p className="text-slate-gray font-normal text-[15px] py-[10px]">Your credentials are stored locally and encrypted in transit.</p>
+    <>
+      <form onSubmit={onSubmit} className="p-4" onChange={(e) => getOnChangeEvents(e)}>
+        <Heading>Enter your {platformName} Credentials</Heading>
+        <p className="text-slate-gray font-normal text-[15px] py-[10px]">Your credentials are stored locally and encrypted in transit.</p>
 
-      {renderInputs()}
+        {renderInputs()}
+
+        <button type="submit" disabled={buttonDisabled} className={`${buttonDisabled ? "opacity-[50%] bg-black" : "hover:cursor-pointer"} mt-4 bg-black hover:bg-gray-800 text-white w-full max-w-[400px] h-[48px] rounded p-[12px]`}>
+          Verify Credentials
+        </button>
+
+      </form>
       {
         error ? (
-          <div className="text-red-600 font-semibold text-[14px]">
-            {errorUsercredentials?.error ? errorUsercredentials.error : null}
-          </div>
+          <Notification
+            variant="error"
+            title="Invalid Credentials"
+            description="Please verify your credentials and try again."
+            onClose={() => setNotificationClose(false)}
+          />
         ) : ""
       }
-
-      <button type="submit" disabled={buttonDisabled} className={`${buttonDisabled ? "opacity-[50%] bg-black" : "hover:cursor-pointer"} mt-4 bg-black hover:bg-gray-800 text-white w-full max-w-[400px] h-[48px] rounded p-[12px]`}>
-        Verify Credentials
-      </button>
-   
-    </form>
+    </>
   );
 };
 

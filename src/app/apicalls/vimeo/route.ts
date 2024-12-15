@@ -1,36 +1,6 @@
 import processVideosForPlatform from "../fastpix/route";
 import { NextResponse } from "next/server";
-
-interface MetaData {
-    environment: string;
-    platformId: string;
-}
-
-interface LogoImage {
-    key: null;
-    props: Record<string, string>;
-    _owner: string;
-    _store: Record<string, string>;
-}
-
-interface Credentials {
-    publicKey: string;
-    secretKey: string;
-    logo: LogoImage;
-    additionalMetadata: MetaData;
-}
-
-interface VideoConfig {
-    encodingTier: string;
-    playbackPolicy: Array<string>;
-}
-
-interface PlatformCredentials {
-    id: string;
-    name: string;
-    credentials: Credentials;
-    config?: VideoConfig;
-}
+import { PlatformCredentials } from '../../components/utils/types';
 
 const fetchVimeoMedia = async (sourcePlatform: PlatformCredentials) => {
     const token = sourcePlatform?.credentials?.secretKey;
@@ -44,16 +14,25 @@ const fetchVimeoMedia = async (sourcePlatform: PlatformCredentials) => {
             },
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            return data?.data || [];
-        } else {
+        const vimeoVideoRes = await response.json();
+        if (!response.ok) {
 
-            return { success: false, message: "Failed t0 get media" }
+            return { success: false, status: vimeoVideoRes?.status ?? 404, message: vimeoVideoRes?.developer_message };
         }
+
+        return {
+            success: true,
+            videos: vimeoVideoRes?.data?.map(video => ({
+                videoId: video?.link.split("/")?.at(-1) ?? null,
+                mp4_url: video?.download?.find((file) => file.quality === 'source')?.link ?? null,
+                tags: video?.tags,
+                metadata: video?.metadata
+            })),
+        };
+
     } catch (error) {
 
-        return { success: false, message: error?.message ?? "Failed to get media" }
+        return { success: false, message: error?.message}
     }
 };
 
@@ -63,52 +42,40 @@ export async function POST(request: Request) {
         const sourcePlatform = data?.sourcePlatform;
         const destinationPlatform = data?.destinationPlatform;
 
-        if (!sourcePlatform || !destinationPlatform) {
+        const vimeoVideosRes = await fetchVimeoMedia(sourcePlatform);
+
+        if (!vimeoVideosRes.success) {
 
             return NextResponse.json(
-                JSON.stringify({ message: 'Source or destination platform not provided' }),
-                { status: 400 }
+                { message: vimeoVideosRes.message ?? "Something went wrong while fetching videos from Vimeo Video" },
+                { status: 404 }
             );
         }
 
-        if (sourcePlatform.id === 'vimeo') {
-            const videos = await fetchVimeoMedia(sourcePlatform);
+        const result = await processVideosForPlatform(destinationPlatform, vimeoVideosRes?.videos, "vimeo")
 
-            if (!videos || videos.length === 0) {
-                return NextResponse.json(
-                    JSON.stringify({ message: 'No videos found for the user' }),
-                    { status: 404 }
-                );
-            }
+        const createdMedia = result.createdMedia
+        const failedMedia = result.failedMedia
 
-            const result = await processVideosForPlatform(destinationPlatform, videos, "vimeo")
+        if (createdMedia.length > 0 || failedMedia.length > 0) {
 
-            const createdMedia = result.createdMedia
-            const failedMedia = result.failedMedia
-
-            if (createdMedia.length > 0 || failedMedia.length > 0) {
-                return NextResponse.json(
-                    { success: true, createdMedia, failedMedia },
-                    { status: 200 }
-                );
-            } else {
-                const errorMsg = videos.length === 0 ? "No Vidoes found in API Video" : "Failed to create Media"
-                return NextResponse.json(
-                    { error: errorMsg },
-                    { status: 400 }
-                );
-            }
+            return NextResponse.json(
+                { success: true, createdMedia, failedMedia },
+                { status: 200 }
+            );
         } else {
-
+            const errorMsg = vimeoVideosRes?.videos?.length === 0 ? "No Vidoes found in Vimeo Video" : "Failed to create Media"
+            
             return NextResponse.json(
-                JSON.stringify({ message: "No media created" }),
+                { message: errorMsg },
                 { status: 400 }
             );
         }
+
     } catch (error) {
 
         return NextResponse.json(
-            JSON.stringify({ message: error?.message ?? 'Internal server error' }),
+            JSON.stringify({ message: error?.message ?? "Something went Wrong" }),
             { status: 500 }
         );
     }

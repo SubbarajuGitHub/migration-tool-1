@@ -61,7 +61,7 @@ export default function Review() {
         const response = await result?.json()
 
         if (result?.status === 200) {
-            if (response?.createdMedia?.length >= 1) {
+            if  (response?.createdMedia?.length >= 1) {
                 setOriginvidoesList(response?.createdMedia);
             } if (response?.failedMedia?.length >= 1) {
                 setFailedVideos(response?.failedMedia)
@@ -69,13 +69,13 @@ export default function Review() {
             setIsVideosMigrating(false);
         } else {
             setIsVideosMigrating(false);
+
             setMigrationError([
-                {
-                    error: "True",
-                    message: response?.message ?? "Failed to Migrate",
+                {   success: true,
+                    status: result?.status,
+                    message: response?.message ?? response?.error,
                 },
-            ]);
-            
+            ]); 
         }
     }
 

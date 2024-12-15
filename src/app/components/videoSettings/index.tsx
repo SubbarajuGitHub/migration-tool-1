@@ -21,7 +21,7 @@ const platformOptions = [
         docsUrl: '',
         name: 'maxResolutionTier',
         type: 'select',
-        values: ['1080p', '1440p', '2160p', '720p', '480p']
+        values: ["480p", "720p", "1080p", '1440p', '2160p']
       },
       {
         label: 'Playback policy',
