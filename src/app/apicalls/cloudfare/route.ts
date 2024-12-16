@@ -97,7 +97,7 @@ export async function POST(request: Request) {
 
         if (videos.length === allDownloadUrls) {
             
-            await new Promise(resolve => setTimeout(resolve, 60000));
+            await new Promise(resolve => setTimeout(resolve, 30000));
 
             const result = await processVideosForPlatform(destinationPlatform, videoData, "cloudfare")
 
