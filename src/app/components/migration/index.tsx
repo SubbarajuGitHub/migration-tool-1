@@ -61,14 +61,14 @@ const MigrationStatus: React.FC = () => {
                         </div>
 
                         {
-                            migrationError?.success ?
+                            migrationError?.[0]?.success === true ?
                                 (
                                     <ErrorUI title={migrationError?.[0]?.message} code={migrationError?.[0]?.status} />
                                 )
                                 : ""
                         }
 
-                        {failedVideos?.length === 0 && originPlatformVideos?.map((video, index) =>
+                        {originPlatformVideos?.map((video, index) =>
                             video?.data?.id ? (
                                 <div key={index} className="grid grid-cols-[1fr_2fr_1fr] border">
                                     <div className="px-4 py-2 text-sm sm:text-base">{index + 1}</div>
@@ -84,7 +84,7 @@ const MigrationStatus: React.FC = () => {
                         )}
 
                         {failedVideos?.length >= 1 ? (
-                                <FailedVideos failedVideos={failedVideos} />
+                            <FailedVideos failedVideos={failedVideos} />
                         ) : ""}
                     </div>
                 </div>
