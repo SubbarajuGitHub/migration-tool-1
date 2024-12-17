@@ -42,7 +42,7 @@ const VideoSettings = () => {
   const platform = useMigrationStore((state) =>
     state.currentStep === 'set-import-settings' ? state.destinationPlatform : state.sourcePlatform
   );
-  const [config, setConfig] = useState({ encodingTier: 'smart',  playbackPolicy: ["public"], });
+  const [config, setConfig] = useState({ encodingTier: 'smart',  playbackPolicy: ["public"],  maxResolutionTier: "480p" });
 
   if (!platform) {
     return null;
@@ -79,7 +79,7 @@ const VideoSettings = () => {
       setConfig({ ...config, [field.name]: value });
     }
   };
-  
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setPlatform(platform.type, { ...platform, config });
